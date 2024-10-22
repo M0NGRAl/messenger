@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мессенджер</title>
+    {% load static %}
+    <link href="{% static 'css/style.css' %}" rel="stylesheet" />
+</head>
+<body>
+    <h1>Мессенджер</h1>
+    <div class="container">
+        <div id="users">
+            <h2>Пользователи</h2>
+            <ul id="user-list"></ul>
+        </div>
+
+        <div id="chats">
+            <h2>Чаты</h2>
+            <ul id="chat-list"></ul>
+        </div>
+    </div>
+
+    <div class="container2">
+        <div id="send-message">
+            <h2>Отправить сообщение пользователю</h2>
+            <div id="selected-user-name" style="display: none;"></div>
+            <div id="direct-message-window" style="display: none;">
+                <div id="direct-messages"></div>
+                <input type="text" id="user-message" placeholder="Введите сообщение">
+                <button onclick="sendDirectMessage()">Отправить</button>
+            </div>
+        </div>
+
+        <div id="messagess">
+            <h2>Сообщения</h2>
+            <div id="messages"></div>
+            <input type="text" id="new-message" placeholder="Введите сообщение">
+            <button onclick="sendMessage()">Отправить</button>
+        </div>
+    </div>
+    <div id="create-chat">
+        <h3>Создать новый чат</h3>
+        <input type="text" id="new-chat-name" placeholder="Введите название чата">
+        <select id="new-chat-users" multiple>
+            <!-- Список пользователей будет заполнен через JS -->
+        </select>
+        <button onclick="createChat()">Создать чат</button>
+    </div>
+    <script>
+        let currentChatId = null; // Инициализируем переменную для текущего чата
+        let currentUserId = null; // Инициализируем переменную для текущего пользователя
+        let currentUsername = ''; // Инициализируем переменную для имени пользователя
+
+        // Функция загрузки пользователей
+        async function fetchUsers() {
+            const response = await fetch('/back/users/');
+            const users = await response.json();
+            const userListElement = document.getElementById('user-list');
+            const userSelectElement = document.getElementById('new-chat-users');
+
+            userListElement.innerHTML = '';  // Очистить список пользователей
+            userSelectElement.innerHTML = '';  // Очистить выбор пользователей
+
+            users.forEach(user => {
+                const li = document.createElement('li');
+                li.textContent = user.username;
+                li.onclick = () => selectUser(user.id, user.username); // Устанавливаем обработчик клика
+                userListElement.appendChild(li);
+
+                const option = document.createElement('option');
+                option.value = user.id;
+                option.textContent = user.username;
+                userSelectElement.appendChild(option);
+            });
+        }
+
+        // Функция загрузки чатов
+        async function fetchChats() {
+            const response = await fetch('/back/chats/');
+            const chats = await response.json();
+            const chatListElement = document.getElementById('chat-list');
+
+            chatListElement.innerHTML = '';  // Очистить список чатов
+
+            chats.forEach(chat => {
+                const li = document.createElement('li');
+                li.textContent = chat.name;
+                li.onclick = () => selectChat(chat.id);  // При клике выбираем чат
+                chatListElement.appendChild(li);
+            });
+        }
+
+        // Функция создания чата
+        async function createChat() {
+            const chatNameInputElement = document.getElementById('new-chat-name');
+            const chatName = chatNameInputElement.value;
+            const usersSelectElement = document.getElementById('new-chat-users');
+            const selectedUsers = Array.from(usersSelectElement.selectedOptions).map(option => option.value);
+
+            if (!chatName) {
+                alert("Пожалуйста, введите название чата.");
+                return;
+            }
+
+            const csrfToken = getCSRFToken();
+
+            const response = await fetch('/back/chats/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    name: chatName,
+                    users: selectedUsers  // Передаем выбранных пользователей
+                })
+            });
+
+            if (!response.ok) {
+                console.error("Ошибка при создании чата:", response.statusText);
+                return;
+            }
+
+            chatNameInputElement.value = '';  // Очистить поле после создания чата
+            fetchChats();  // Перезагрузить список чатов
+        }
+
+        // Функция отправки сообщения в чат
+        async function sendMessage() {
+            if (currentChatId === null) {
+                alert("Пожалуйста, выберите чат перед отправкой сообщения.");
+                return;
+            }
+
+            const newMessageInput = document.getElementById('new-message');
+            const newMessage = newMessageInput.value;
+
+            if (!newMessage) {
+                alert("Введите сообщение.");
+                return;
+            }
+
+            const csrfToken = getCSRFToken();
+
+            try {
+                console.log(`Отправка сообщения в чат ${currentChatId}: ${newMessage}`);
+                const response = await fetch(`/back/chats/${currentChatId}/messages/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        text: newMessage,
+                        chat: currentChatId  // Передаем ID чата
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`Ошибка при отправке сообщения: ${errorText}`);
+                    throw new Error(`Ошибка при отправке сообщения: ${response.statusText}`);
+                }
+
+                newMessageInput.value = '';  // Очистить поле после отправки
+                loadMessages(currentChatId); // Загружаем сообщения для выбранного чата
+            } catch (error) {
+                console.error(error);
+                alert("Не удалось отправить сообщение.");
+            }
+        }
+
+        // Функция загрузки сообщений выбранного чата
+        async function loadMessages(chatId) {
+            const response = await fetch(`/back/chats/${chatId}/messages/`);
+            const messages = await response.json();
+            const messagesElement = document.getElementById('messages');
+
+            messagesElement.innerHTML = '';  // Очистить сообщения
+
+            messages.forEach(message => {
+                const messageDiv = document.createElement('div');
+                messageDiv.textContent = `${message.user.username}: ${message.text}`;
+                messagesElement.appendChild(messageDiv);
+            });
+        }
+
+        // Функция отправки сообщения пользователю
+        async function sendDirectMessage() {
+            if (currentUserId === null) {
+                alert("Пожалуйста, выберите пользователя перед отправкой сообщения.");
+                return;
+            }
+
+            const newMessageInput = document.getElementById('user-message');
+            const newMessage = newMessageInput.value;
+
+            if (!newMessage) {
+                alert("Введите сообщение.");
+                return;
+            }
+
+            const csrfToken = getCSRFToken();
+
+            try {
+                console.log(`Отправка сообщения пользователю ${currentUserId}: ${newMessage}`);
+                const response = await fetch(`/back/users/${currentUserId}/messages/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        text: newMessage, // Текст сообщения
+                        user: currentUserId, // ID пользователя
+                        username: currentUsername // Добавлено имя отправителя
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`Ошибка при отправке сообщения: ${errorText}`);
+                    throw new Error(`Ошибка при отправке сообщения: ${response.statusText}`);
+                }
+
+                newMessageInput.value = '';  // Очистить поле после отправки
+                loadDirectMessages(currentUserId);  // Загружаем сообщения для выбранного пользователя
+            } catch (error) {
+                console.error(error);
+                alert("Не удалось отправить сообщение.");
+            }
+        }
+
+        // Функция загрузки сообщений выбранного пользователя
+        async function loadDirectMessages(userId) {
+            const response = await fetch(`/back/users/${userId}/messages/`);
+            const messages = await response.json();
+            const messagesElement = document.getElementById('direct-messages');
+
+            messagesElement.innerHTML = '';  // Очистить сообщения
+
+            messages.forEach(message => {
+                const messageDiv = document.createElement('div');
+                messageDiv.textContent = `${message.user.username}: ${message.text}`;  // Предполагается, что есть поле sender
+                messagesElement.appendChild(messageDiv);
+            });
+
+            document.getElementById('direct-message-window').style.display = 'block';  // Показываем окно сообщений
+        }
+
+        // Функция выбора пользователя
+        function selectUser(userId, username) {
+            currentUserId = userId;
+            currentUsername = username; // Сохраняем имя выбранного пользователя
+            console.log('Выбран пользователь с ID', userId);
+            document.getElementById('selected-user-name').textContent = `Выбран пользователь: ${username}`;
+            document.getElementById('selected-user-name').style.display = 'block'; // Показываем имя выбранного пользователя
+            loadDirectMessages(userId);  // Загружаем сообщения для выбранного пользователя
+        }
+
+        // Функция получения CSRF-токена
+        function getCSRFToken() {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, 10) === 'csrftoken=') {
+                        cookieValue = decodeURIComponent(cookie.substring(10));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Функция выбора чата
+        function selectChat(chatId) {
+            currentChatId = chatId;
+            console.log("Выбран чат с ID:", chatId);
+            loadMessages(chatId);  // Загрузка сообщений для выбранного чата
+        }
+
+        // Загрузка данных при загрузке страницы
+        window.onload = function() {
+            fetchUsers();
+            fetchChats();
+        };
+    </script>
+</body>
+</html>

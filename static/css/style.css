@@ -1,0 +1,86 @@
+body {
+    margin: 0;
+    height: 100vh; /* Занять всю высоту экрана */
+    display: flex;
+    align-items: center;
+    flex-direction: column; /* Указываем вертикальное расположение элементов */
+}
+
+.container {
+    display: flex;
+    justify-content: center;
+    align-content: flex-start;
+    width: 100%;
+}
+
+#users {
+    width: 30%; /* Ширина блока с пользователями */
+    padding: 10px; /* Отступ внутри блока */
+    border: 1px solid #ccc; /* Граница */
+    border-radius: 5px; /* Скругление углов */
+    background-color: #f9f9f9; /* Цвет фона */
+}
+
+#chats {
+    width: 30%; /* Ширина блока с чатами */
+    padding: 10px; /* Отступ внутри блока */
+    border: 1px solid #ccc; /* Граница */
+    border-radius: 5px; /* Скругление углов */
+    background-color: #f9f9f9; /* Цвет фона */
+}
+
+.container2 {
+    display: flex;
+    justify-content: center;
+    align-content: flex-start;
+    width: 100%;
+    margin-top: 20px; /* Отступ сверху для разделения с предыдущими контейнерами */
+}
+
+#send-message, #messagess {
+    width: 30%; /* Ширина блоков для отправки сообщений и сообщений */
+    padding: 10px; /* Отступ внутри блока */
+    border: 1px solid #ccc; /* Граница */
+    border-radius: 5px; /* Скругление углов */
+    background-color: #f9f9f9; /* Цвет фона */
+}
+
+#send-message h2, #messagess h2 {
+    margin-top: 0; /* Убираем верхний отступ у заголовков */
+}
+
+input[type="text"], select {
+    width: 100%; /* Занять всю ширину */
+    padding: 10px; /* Отступ внутри поля */
+    margin: 5px 0; /* Отступ сверху и снизу */
+    border: 1px solid #ccc; /* Граница */
+    border-radius: 5px; /* Скругление углов */
+}
+
+button {
+    padding: 10px 15px; /* Отступы внутри кнопки */
+    margin-top: 10px; /* Отступ сверху для кнопки */
+    border: none; /* Убираем границу */
+    border-radius: 5px; /* Скругление углов */
+    background-color: #007BFF; /* Цвет фона кнопки */
+    color: white; /* Цвет текста кнопки */
+    cursor: pointer; /* Указываем, что это кнопка */
+}
+
+button:hover {
+    background-color: #0056b3; /* Цвет фона кнопки при наведении */
+}
+
+h1 {
+    color: red; /* Замените на нужный цвет */
+    text-align: center; /* Центрируем заголовок */
+}
+
+#create-chat {
+    margin-top: 20px; /* Отступ сверху */
+    width: 100%; /* Занять всю ширину */
+    padding: 10px; /* Отступ внутри блока */
+    border: 1px solid #ccc; /* Граница */
+    border-radius: 5px; /* Скругление углов */
+    background-color: #f9f9f9; /* Цвет фона */
+}
