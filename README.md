@@ -1,2 +1,1 @@
-Установить Django
-djangorestframework
+Установить Django, djangorestframework
