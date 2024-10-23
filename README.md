@@ -1,0 +1,2 @@
+Установить Django
+djangorestframework
